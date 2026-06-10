@@ -2,7 +2,9 @@ package com.stu.helloserver.controller;
 
 import com.stu.helloserver.common.Result;
 import com.stu.helloserver.dto.UserDTO;
+import com.stu.helloserver.entity.UserInfo;
 import com.stu.helloserver.service.UserService;
+import com.stu.helloserver.vo.UserDetailVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,21 +27,11 @@ public class UserController {
         return userService.login(userDTO);
     }
 
-    // 根据 id 查询用户
+    // 根据 id 查询用户（基础信息）
     @GetMapping("/{id}")
     public Result<String> getUser(@PathVariable Long id) {
         return userService.getUserById(id);
     }
-
-    // 以下方法（PUT / DELETE）如果之前有且使用了旧 User 实体，可暂时注释，或者保持原样但需要调整
-    // 为了不影响任务5的测试，建议注释
-    /*
-    @PutMapping("/{id}")
-    public Result<String> updateUser(...) { ... }
-
-    @DeleteMapping("/{id}")
-    public Result<String> deleteUser(...) { ... }
-    */
 
     // 分页查询用户列表
     @GetMapping("/page")
@@ -47,4 +39,22 @@ public class UserController {
                                       @RequestParam(defaultValue = "5") Integer pageSize) {
         return userService.getUserPage(pageNum, pageSize);
     }
+
+    // 查询用户详情（多表联查 + Redis 缓存）
+    @GetMapping("/{id}/detail")
+    public Result<UserDetailVO> getUserDetail(@PathVariable("id") Long userId) {
+        return userService.getUserDetail(userId);
+    }
+
+    @PutMapping("/{id}/detail")
+    public Result<String> updateUserInfo(@PathVariable("id") Long userId,
+                                         @RequestBody UserInfo userInfo) {
+        return userService.updateUserInfo(userId, userInfo);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<String> deleteUser(@PathVariable("id") Long userId) {
+        return userService.deleteUser(userId);
+    }
+
 }
