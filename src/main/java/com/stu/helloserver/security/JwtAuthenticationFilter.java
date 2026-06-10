@@ -6,60 +6,60 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 
-@Component
+// 不再使用 @Component，由 SecurityConfig 手动创建
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
+    private final UserMapper userMapper;
 
-    @Autowired
-    private UserMapper userMapper;
+    // 构造器（必须）
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserMapper userMapper) {
+        this.jwtUtil = jwtUtil;
+        this.userMapper = userMapper;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        // 1. 获取 Authorization 头
+        System.out.println(">>> JwtAuthenticationFilter 拦截请求: " + request.getRequestURI());
+
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2. 提取 JWT
         String jwt = authHeader.substring(7);
         String username;
         try {
             username = jwtUtil.extractUsername(jwt);
+            System.out.println("解析出的用户名: " + username);
         } catch (Exception e) {
-            // token 解析失败，放行（后续会被 Security 拦截为未认证）
+            System.out.println("JWT 解析失败: " + e.getMessage());
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 3. 如果解析到用户名，且当前 SecurityContext 中没有认证信息
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            User user = userMapper.selectOne(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<User>()
-                            .eq(User::getUsername, username)
-            );
-            if (user != null && !jwtUtil.isTokenExpired(jwt)) {
-                // 创建认证令牌
+            User user = userMapper.selectByUsername(username);
+            if (user != null && jwtUtil.isTokenValid(jwt, username)) {
                 UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+                        new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                System.out.println("已设置认证信息，用户: " + username);
             }
         }
+
         filterChain.doFilter(request, response);
     }
 }
