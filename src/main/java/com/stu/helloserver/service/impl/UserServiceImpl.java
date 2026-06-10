@@ -11,6 +11,7 @@ import com.stu.helloserver.entity.User;
 import com.stu.helloserver.entity.UserInfo;
 import com.stu.helloserver.mapper.UserInfoMapper;
 import com.stu.helloserver.mapper.UserMapper;
+import com.stu.helloserver.security.JwtUtil;
 import com.stu.helloserver.service.UserService;
 import com.stu.helloserver.vo.UserDetailVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private JwtUtil jwtUtil;   // 新增 JWT 工具类注入
 
     private static final String CACHE_KEY_PREFIX = "user:detail:";
 
@@ -53,7 +57,7 @@ public class UserServiceImpl implements UserService {
         return Result.success("注册成功");
     }
 
-    // ==================== 登录 ====================
+    // ==================== 登录（返回 JWT） ====================
     @Override
     public Result<String> login(UserDTO userDTO) {
         // 1. 根据用户名查询
@@ -68,7 +72,9 @@ public class UserServiceImpl implements UserService {
         if (!dbUser.getPassword().equals(userDTO.getPassword())) {
             return Result.error(ResultCode.PASSWORD_ERROR);
         }
-        return Result.success("登录成功");
+        // 4. 登录成功，生成 JWT 令牌
+        String jwt = jwtUtil.generateToken(userDTO.getUsername());
+        return Result.success(jwt);
     }
 
     // ==================== 根据ID查询用户（基础信息） ====================
