@@ -9,6 +9,7 @@ import com.stu.helloserver.mapper.UserMapper;
 import com.stu.helloserver.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -59,5 +60,15 @@ public class UserServiceImpl implements UserService {
         }
         String data = "查询成功，用户ID：" + user.getId() + "，用户名：" + user.getUsername();
         return Result.success(data);
+    }
+
+    @Override
+    public Result<Object> getUserPage(Integer pageNum, Integer pageSize) {
+        // 1. 创建分页对象（当前页码，每页条数）
+        Page<User> pageParam = new Page<>(pageNum, pageSize);
+        // 2. 执行分页查询（null 表示无条件查询）
+        Page<User> resultPage = userMapper.selectPage(pageParam, null);
+        // 3. 返回分页结果（包含 records、total、pages 等）
+        return Result.success(resultPage);
     }
 }
